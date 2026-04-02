@@ -22,10 +22,11 @@ public class PlayerController : MonoBehaviour
 
     void Start()
     {
-        if(assignedWeapons.Count == 0) // If the assigned weapons count is 0. GK
-        {        
-            AddWeapon(Random.Range(0, unassignedWeapons.Count)); // Add a random weapon. GK
-
+        // Class Survival: Always start with the first weapon in unassigned (the Dagger).
+        // The player's class list starts empty; on first level-up they will choose a class.
+        if (assignedWeapons.Count == 0 && unassignedWeapons.Count > 0)
+        {
+            AddWeapon(0); // Always give the player the first weapon (Dagger) at start.
         }
         moveSpeed = PlayerStatController.instance.moveSpeed[0].value; // Set the move speed to the player stat controller move speed. GK
         pickupRange = PlayerStatController.instance.pickupRange[0].value; // Set the pickup range to the player stat controller pickup range. GK
@@ -61,6 +62,10 @@ public class PlayerController : MonoBehaviour
         {
             anim.SetBool("isMoving", false);
         }
+    }
+    public bool HasWeapon(Weapon weapon)
+    {
+        return assignedWeapons.Contains(weapon) || fullyLevelledWeapons.Contains(weapon);
     }
     public void AddWeapon(int weaponNumber) // Function to add a weapon. GK
     {

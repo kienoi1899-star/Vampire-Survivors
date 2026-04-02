@@ -1,107 +1,186 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using UnityEngine;
 
 public class ExperienceLevelController : MonoBehaviour
 {
-    public static ExperienceLevelController instance; // Create a singleton instance of the ExperienceLevelController. GK
+    public static ExperienceLevelController instance;
     public void Awake()
     {
-        instance = this; // Set the instance to this object. GK
+        instance = this;
     }
 
-    public int currentExperience; // The current experience of the player. GK 
+    public int currentExperience;
+    public ExpPickup pickup;
+    public List<int> expLevels;
+    public int currentLevel = 1, levelCount = 100;
 
-    public ExpPickup pickup; // The experience pickup. GK
-    public List<int> expLevels; // The list of experience levels. GK
-    public int currentLevel = 1, levelCount = 100; // The current level of the player. GK
-    public List<Weapon> weaponsToUpgrade; // The list of weapons to upgrade. GK
-    
-    // Start is called before the first frame update
     void Start()
     {
-        while (expLevels.Count < levelCount)    // While the experience levels are less than the level count. GK
+        while (expLevels.Count < levelCount)
         {
-            expLevels.Add(Mathf.CeilToInt(expLevels[expLevels.Count-1]*1.1f)); // Add the experience levels to the list. GK
+            expLevels.Add(Mathf.CeilToInt(expLevels[expLevels.Count - 1] * 1.1f));
         }
     }
 
-    // Update is called once per frame
-    void Update()
+    public void GetExp(int amountToGet)
     {
-        
-    }
-
-    public void GetExp(int amountToGet) // Function to get experience. GK
-    {
-        currentExperience += amountToGet; // Add the amount to the current experience. GK
-        if(currentExperience >= expLevels[currentLevel]) // If the current experience is greater than or equal to the experience levels. GK
+        currentExperience += amountToGet;
+        if (currentExperience >= expLevels[currentLevel])
         {
-            LevelUp(); // Level up the player. GK
+            LevelUp();
         }
-        UIController.instance.UpdateExperience(currentExperience, expLevels[currentLevel], currentLevel); // Update the experience. GK
-        SFXManager.instance.PlaySFXPitched(2); // Play the sound effect. GK
+        UIController.instance.UpdateExperience(currentExperience, expLevels[currentLevel], currentLevel);
+        SFXManager.instance.PlaySFXPitched(2);
     }
 
-    public void SpawnExp(Vector3 position, int expValue) // Function to spawn experience into the world. GK
+    public void SpawnExp(Vector3 position, int expValue)
     {
-        Instantiate(pickup, position, Quaternion.identity).expValue = expValue; // Instantiate the experience at the position. GK 
+        Instantiate(pickup, position, Quaternion.identity).expValue = expValue;
     }
-    private void LevelUp() // Function to level up the player. GK
+
+    private void LevelUp()
     {
-        currentExperience -= expLevels[currentLevel]; // Subtract the experience levels from the current experience. GK         
-        currentLevel++; // Increase the current level. GK
-        if(currentLevel >= expLevels.Count) // If the current level is greater than or equal to the level count. GK
+        currentExperience -= expLevels[currentLevel];
+        currentLevel++;
+        if (currentLevel >= expLevels.Count)
+            currentLevel = expLevels.Count - 1;
+
+        UIController.instance.levelUpPanel.SetActive(true);
+        Time.timeScale = 0f;
+
+        BuildClassBasedLevelUpChoices();
+        PlayerStatController.instance.UpdateDisplay();
+    }
+
+    /// <summary>
+    /// Builds the list of upgrade choices for the level-up panel using the class progression system.
+    /// Priority order:
+    ///   1. If no class yet → offer class selections.
+    ///   2. If all weapons of active class are maxed → offer Promotion (if available).
+    ///   3. Otherwise → offer weapon upgrades / unlocks for the active class.
+    ///   4. Small random chance: also offer a new class slot (2nd / 3rd) mixed in.
+    /// </summary>
+    private void BuildClassBasedLevelUpChoices()
+    {
+        var buttons = UIController.instance.levelUpButtons;
+        var choices = new List<LevelUpChoice>(); // max 3 choices
+
+        ClassManager cm = ClassManager.instance;
+
+        // --- Case 1: Player has no class yet → show class selection ---
+        if (cm.HasNoClass)
         {
-            currentLevel = expLevels.Count-1; // Set the current level to the level count. GK
+            var unlockable = cm.GetUnlockableClasses();
+            int count = Mathf.Min(unlockable.Count, buttons.Length);
+            for (int i = 0; i < count; i++)
+                choices.Add(new LevelUpChoice { type = ChoiceType.SelectClass, classData = unlockable[i] });
         }
-        //PlayerController.instance.activeWeapon.LevelUp(); // Level up the player's weapon. GK
-        UIController.instance.levelUpPanel.SetActive(true); // Set the level up panel to active. GK
-        Time.timeScale = 0f; // Set the time scale to 0. GK
-        //UIController.instance.levelUpButtons[1].UpdateButtonDisplay(PlayerController.instance.activeWeapon); // Update the button display. GK
-        //UIController.instance.levelUpButtons[1].UpdateButtonDisplay(PlayerController.instance.unassignedWeapons[0]); // Update the button display. GK
-       //UIController.instance.levelUpButtons[2].UpdateButtonDisplay(PlayerController.instance.unassignedWeapons[1]); // Update the button display. GK
-       
-       weaponsToUpgrade.Clear(); // Clear the Weapons from the list. GK
-       List<Weapon> availableWeapons = new List<Weapon>(); // Create a new list of available weapons. GK
-       availableWeapons.AddRange(PlayerController.instance.assignedWeapons); // Add the assigned weapons to the available weapons. GK
+        else
+        {
+            ClassData activeClass = cm.ActiveClass;
 
-       if (availableWeapons.Count > 0)
-       {
-           int selected = Random.Range(0, availableWeapons.Count); // Select a random weapon. GK
-           weaponsToUpgrade.Add(availableWeapons[selected]); // Add the weapon to the list. GK
-           availableWeapons.RemoveAt(selected); // Remove the weapon from the list. GK
-       }
-       if(PlayerController.instance.assignedWeapons.Count + PlayerController.instance.fullyLevelledWeapons.Count < PlayerController.instance.maxWeapons) // If the unassigned weapons count is less than the maximum weapons. GK
-       {
-           availableWeapons.AddRange(PlayerController.instance.unassignedWeapons); // Add the unassigned weapons to the available weapons. GK
-       }
-       for(int i = weaponsToUpgrade.Count; i<3; i++) // For each weapon to upgrade. GK
-       {
-           if (availableWeapons.Count > 0) // If the available weapons count is greater than 0. GK
-           {
-               int selected = Random.Range(0, availableWeapons.Count); // Select a random weapon. GK
-               weaponsToUpgrade.Add(availableWeapons[selected]); // Add the weapon to the list. GK
-               availableWeapons.RemoveAt(selected); // Remove the weapon from the list. GK
-           }
-       }
-       for (int i =0; i < weaponsToUpgrade.Count; i++) // For each weapon to upgrade. GK
-       {
-           UIController.instance.levelUpButtons[i].UpdateButtonDisplay(weaponsToUpgrade[i]); // Update the button display. GK
-       }
+            // --- Case 2: All active-class weapons are maxed → offer Promotion ---
+            if (cm.AreAllWeaponsMaxedForClass(activeClass) && activeClass.promotionClass != null)
+            {
+                choices.Add(new LevelUpChoice { type = ChoiceType.Promotion, classData = activeClass });
+            }
+            else
+            {
+                // --- Case 3: Offer weapon upgrades for the active class ---
+                List<Weapon> available = new List<Weapon>();
 
-       for (int i = 0; i < UIController.instance.levelUpButtons.Length; i++) // For each button in the level up buttons. GK
-       {
-           if (i < weaponsToUpgrade.Count) // If the button is less than the weapons to upgrade count. GK
-           {
-               UIController.instance.levelUpButtons[i].gameObject.SetActive(true); // Set the button to active. GK
-           }
-           else // If the button is not less than the weapons to upgrade count. GK
-           {
-               UIController.instance.levelUpButtons[i].gameObject.SetActive(false); // Set the button to inactive. GK
-           }
-       }
-       PlayerStatController.instance.UpdateDisplay(); // Update the display. GK
+                // Already assigned (not maxed) → upgrade
+                foreach (var w in PlayerController.instance.assignedWeapons)
+                {
+                    if (activeClass.classWeapons.Contains(w))
+                        available.Add(w);
+                }
+                // Unassigned weapons belonging to active class → unlock
+                foreach (var w in PlayerController.instance.unassignedWeapons)
+                {
+                    if (activeClass.classWeapons.Contains(w))
+                        available.Add(w);
+                }
+
+                // Pick up to (buttons.Length - 1) weapon choices to leave room for a new-class offer
+                int weaponSlots = Mathf.Min(available.Count, buttons.Length - 1);
+                for (int i = 0; i < weaponSlots && available.Count > 0; i++)
+                {
+                    int idx = Random.Range(0, available.Count);
+                    choices.Add(new LevelUpChoice { type = ChoiceType.Weapon, weapon = available[idx] });
+                    available.RemoveAt(idx);
+                }
+            }
+
+            // --- Case 4: Random chance to offer unlocking a new class ---
+            // Uses each candidate class's own secondClassUnlockChance for weighted selection.
+            if (cm.CanUnlockNewClass && choices.Count < buttons.Length)
+            {
+                var unlockable = cm.GetUnlockableClasses();
+                // Try each unlockable class; add the first one whose roll succeeds.
+                foreach (var candidate in unlockable)
+                {
+                    float roll = Random.value;
+                    if (roll <= candidate.secondClassUnlockChance)
+                    {
+                        choices.Add(new LevelUpChoice { type = ChoiceType.SelectClass, classData = candidate });
+                        break; // Offer at most one new-class unlock per level-up
+                    }
+                }
+            }
+        }
+
+        // --- Fill any remaining slots with a fallback weapon offer (from any class) ---
+        if (choices.Count == 0)
+        {
+            // Fallback: use old random weapon logic so the panel is never empty
+            List<Weapon> fallback = new List<Weapon>();
+            fallback.AddRange(PlayerController.instance.assignedWeapons);
+            if (PlayerController.instance.assignedWeapons.Count + PlayerController.instance.fullyLevelledWeapons.Count
+                < PlayerController.instance.maxWeapons)
+                fallback.AddRange(PlayerController.instance.unassignedWeapons);
+
+            int pick = Mathf.Min(fallback.Count, buttons.Length);
+            for (int i = 0; i < pick; i++)
+            {
+                int idx = Random.Range(0, fallback.Count);
+                choices.Add(new LevelUpChoice { type = ChoiceType.Weapon, weapon = fallback[idx] });
+                fallback.RemoveAt(idx);
+            }
+        }
+
+        // --- Apply choices to buttons ---
+        for (int i = 0; i < buttons.Length; i++)
+        {
+            if (i < choices.Count)
+            {
+                buttons[i].gameObject.SetActive(true);
+                buttons[i].SetChoice(choices[i]);
+            }
+            else
+            {
+                buttons[i].gameObject.SetActive(false);
+            }
+        }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Data containers for level-up choices
+// ---------------------------------------------------------------------------
+
+public enum ChoiceType
+{
+    Weapon,      // Upgrade or unlock a weapon
+    SelectClass, // Choose a new class
+    Promotion    // Promote an existing class to a stronger tier
+}
+
+[System.Serializable]
+public class LevelUpChoice
+{
+    public ChoiceType type;
+    public Weapon weapon;       // Used when type == Weapon
+    public ClassData classData; // Used when type == SelectClass or Promotion
 }

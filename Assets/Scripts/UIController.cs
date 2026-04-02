@@ -20,6 +20,8 @@ public class UIController : MonoBehaviour
     public LevelUpSellectionButton[] levelUpButtons; // The level up buttons. GK
 
     public GameObject levelUpPanel; // The level up panel. GK
+    [Tooltip("Optional: Title text shown inside the level-up panel (e.g. 'Choose Your Path').")]
+    public TMP_Text levelUpPanelTitleText; // Class Survival: title shown on the level-up panel.
     public TMP_Text coinText; // The coin text. D
     public GameObject levelEndScreen; // The level end script. GK
     public TMP_Text endTimeText; // The end time text. GK
@@ -33,6 +35,10 @@ public class UIController : MonoBehaviour
     public string mainMenuName; // The main menu scene. GK
 
     public GameObject pauseScreen; // The pause screen. GK
+
+    // Optional: HUD text that shows the player's active class name
+    [Tooltip("Optional HUD label displaying the player's active class.")]
+    public TMP_Text activeClassText;
 
     // Start is called before the first frame update
     void Start()
@@ -53,6 +59,23 @@ public class UIController : MonoBehaviour
         explvlSlider.maxValue = levelExp; // Set the max value of the slider to the level experience. GK
         explvlSlider.value = currentExp; // Set the value of the slider to the current experience. GK
         explvlText.text = "Level: " + currentLvl; // Set the text to the current level and experience. GK
+    }
+
+    /// <summary>Updates the level-up panel title to reflect the current upgrade context.</summary>
+    public void SetLevelUpPanelTitle(string title)
+    {
+        if (levelUpPanelTitleText != null)
+            levelUpPanelTitleText.text = title;
+    }
+
+    /// <summary>Updates the active class HUD label.</summary>
+    public void UpdateActiveClassDisplay()
+    {
+        if (activeClassText == null) return;
+        if (ClassManager.instance == null) return;
+
+        var active = ClassManager.instance.ActiveClass;
+        activeClassText.text = active != null ? "Class: " + active.className : "Class: None";
     }
 
     public void SkipLevelUp() // Function to skip the level. GK
