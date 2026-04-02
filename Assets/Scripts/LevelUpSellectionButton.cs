@@ -7,55 +7,145 @@ using UnityEngine;
 
 public class LevelUpSellectionButton : MonoBehaviour
 {
-    
+    public TMP_Text upgradeDescText, nameLevelText;
+    public Image weaponIcon;
 
-    public TMP_Text upgradeDescText, nameLevelText; // The upgrade description text and the name level text. GK 
+    private LevelUpChoice currentChoice;
 
-    public Image weaponIcon; // The weapon icon. GK
-    private Weapon assignedWeapon; // The assigned weapon. GK   
-    public void UpdateButtonDisplay(Weapon theWeapon) // Function to update the button display. GK
+    // -----------------------------------------------------------------------
+    // Public API
+    // -----------------------------------------------------------------------
+
+    /// <summary>Configure this button to display the given choice.</summary>
+    public void SetChoice(LevelUpChoice choice)
     {
-        if(theWeapon.gameObject.activeSelf == true) // If the weapon game object is not active. GK
-        {
-            upgradeDescText.text = theWeapon.stats[theWeapon.weaponLevel].upgradeText; // Set the upgrade description text to the weapon upgrade text. GK
-            weaponIcon.sprite = theWeapon.icon; // Set the weapon icon to the weapon icon. GK
-            nameLevelText.text = theWeapon.name + " - Lvl " + theWeapon.weaponLevel; // Set the name level text to the weapon name and level. GK
+        currentChoice = choice;
 
+        switch (choice.type)
+        {
+            case ChoiceType.Weapon:
+                DisplayWeaponChoice(choice.weapon);
+                break;
+            case ChoiceType.SelectClass:
+                DisplayClassChoice(choice.classData);
+                break;
+            case ChoiceType.Promotion:
+                DisplayPromotionChoice(choice.classData);
+                break;
+        }
+    }
+
+    // Keep old method for backward compatibility with any leftover calls
+    public void UpdateButtonDisplay(Weapon theWeapon)
+    {
+        currentChoice = new LevelUpChoice { type = ChoiceType.Weapon, weapon = theWeapon };
+        DisplayWeaponChoice(theWeapon);
+    }
+
+    // -----------------------------------------------------------------------
+    // Display helpers
+    // -----------------------------------------------------------------------
+
+    private void DisplayWeaponChoice(Weapon weapon)
+    {
+        if (weapon == null) return;
+
+        if (weapon.gameObject.activeSelf)
+        {
+            upgradeDescText.text = weapon.stats[weapon.weaponLevel].upgradeText;
+            nameLevelText.text = weapon.name + " - Lvl " + weapon.weaponLevel;
         }
         else
         {
-            upgradeDescText.text= "Unlock " + theWeapon.name; // Set the upgrade description text to unlock the weapon name. GK
-            weaponIcon.sprite = theWeapon.icon; // Set the weapon icon to the weapon icon. GK
-            nameLevelText.text= theWeapon.name; // Set the name level text to the weapon name and locked. GK
+            upgradeDescText.text = "Unlock " + weapon.name;
+            nameLevelText.text = weapon.name;
         }
-        assignedWeapon = theWeapon; // Set the assigned weapon to the weapon. GK
-    }
-    public void SelectUpgrade() // Function to select the upgrade. GK
-    {
-        if(assignedWeapon != null) // If the assigned weapon is not null. GK
-        {
-            if(assignedWeapon.gameObject.activeSelf == true) // If the assigned weapon game object is active. GK
-            {
-                assignedWeapon.LevelUp(); // Level up the weapon. GK
-            }
-            else
-            {
-              PlayerController.instance.AddWeapon(assignedWeapon);
-            }
-            UIController.instance.levelUpPanel.SetActive(false); // Set the level up panel to false. GK
-            Time.timeScale = 1f; // Set the timescale to 1. GK
-        }
-    }
-    // Start is called before the first frame update
-    void Start()
-    {
-        
+        if (weaponIcon != null) weaponIcon.sprite = weapon.icon;
     }
 
-    // Update is called once per frame
-    void Update()
+    private void DisplayClassChoice(ClassData classData)
     {
-        
+        if (classData == null) return;
+
+        nameLevelText.text = "Class: " + classData.className;
+        upgradeDescText.text = string.IsNullOrEmpty(classData.classDescription)
+            ? "Unlock the " + classData.className + " class."
+            : classData.classDescription;
+        if (weaponIcon != null && classData.classIcon != null)
+            weaponIcon.sprite = classData.classIcon;
     }
-   
+
+    private void DisplayPromotionChoice(ClassData classData)
+    {
+        if (classData == null) return;
+
+        string promoteTo = classData.promotionClass != null ? classData.promotionClass.className : "???";
+        nameLevelText.text = "Promote: " + classData.className + " → " + promoteTo;
+        upgradeDescText.text = string.IsNullOrEmpty(classData.promotionDescription)
+            ? "Promote " + classData.className + " to a stronger form!"
+            : classData.promotionDescription;
+        if (weaponIcon != null && classData.classIcon != null)
+            weaponIcon.sprite = classData.classIcon;
+    }
+
+    // -----------------------------------------------------------------------
+    // Button click handler
+    // -----------------------------------------------------------------------
+
+    public void SelectUpgrade()
+    {
+        if (currentChoice == null) return;
+
+        switch (currentChoice.type)
+        {
+            case ChoiceType.Weapon:
+                HandleWeaponChoice(currentChoice.weapon);
+                break;
+            case ChoiceType.SelectClass:
+                HandleClassChoice(currentChoice.classData);
+                break;
+            case ChoiceType.Promotion:
+                HandlePromotionChoice(currentChoice.classData);
+                break;
+        }
+
+        UIController.instance.UpdateActiveClassDisplay();
+        UIController.instance.levelUpPanel.SetActive(false);
+        Time.timeScale = 1f;
+    }
+
+    private void HandleWeaponChoice(Weapon weapon)
+    {
+        if (weapon == null) return;
+        if (weapon.gameObject.activeSelf)
+            weapon.LevelUp();
+        else
+            PlayerController.instance.AddWeapon(weapon);
+    }
+
+    private void HandleClassChoice(ClassData classData)
+    {
+        if (classData == null) return;
+        ClassManager.instance.UnlockClass(classData);
+        // Unlock the first weapon of the new class automatically if available
+        if (classData.classWeapons != null && classData.classWeapons.Count > 0)
+        {
+            Weapon firstWeapon = classData.classWeapons[0];
+            if (firstWeapon != null && !PlayerController.instance.assignedWeapons.Contains(firstWeapon))
+                PlayerController.instance.AddWeapon(firstWeapon);
+        }
+    }
+
+    private void HandlePromotionChoice(ClassData classData)
+    {
+        if (classData == null) return;
+        ClassManager.instance.PromoteClass(classData);
+    }
+
+    // -----------------------------------------------------------------------
+    // Unity lifecycle
+    // -----------------------------------------------------------------------
+
+    void Start() { }
+    void Update() { }
 }

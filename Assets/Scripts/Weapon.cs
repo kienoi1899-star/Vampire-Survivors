@@ -9,7 +9,9 @@ public class Weapon : MonoBehaviour
     
     [HideInInspector]
     public bool statsUpdated; // If the stats are updated. GK
-    public Sprite   icon; // The icon of the weapon. GK
+    public Sprite icon; // The icon of the weapon. GK
+    [Tooltip("The class this weapon belongs to (used by the Class Survival progression system).")]
+    public ClassData ownerClass; // The class this weapon belongs to.
     public void LevelUp() // Function to level up the weapon. GK
     {
         if(weaponLevel < stats.Count - 1) // If the weapon level is less than the stats count. GK
