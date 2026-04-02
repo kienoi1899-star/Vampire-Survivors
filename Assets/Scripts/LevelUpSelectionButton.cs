@@ -5,7 +5,7 @@ using TMPro;
 using UnityEngine.UI;
 using UnityEngine;
 
-public class LevelUpSellectionButton : MonoBehaviour
+public class LevelUpSelectionButton : MonoBehaviour
 {
     public TMP_Text upgradeDescText, nameLevelText;
     public Image weaponIcon;

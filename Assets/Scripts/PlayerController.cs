@@ -63,6 +63,10 @@ public class PlayerController : MonoBehaviour
             anim.SetBool("isMoving", false);
         }
     }
+    public bool HasWeapon(Weapon weapon)
+    {
+        return assignedWeapons.Contains(weapon) || fullyLevelledWeapons.Contains(weapon);
+    }
     public void AddWeapon(int weaponNumber) // Function to add a weapon. GK
     {
         if (weaponNumber < unassignedWeapons.Count) // If the weapon number is less than the unassigned weapons count. GK  
