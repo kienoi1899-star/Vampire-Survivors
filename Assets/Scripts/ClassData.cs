@@ -9,16 +9,21 @@ public class ClassData : ScriptableObject
     [TextArea(2, 4)]
     public string classDescription;
     public Sprite classIcon;
+    [Header("Character Visual")]
+    public RuntimeAnimatorController animatorController;
+
+    [Header("Character Prefab")]
+    public GameObject characterPrefab;
 
     [Header("Weapons")]
-    public List<Weapon> classWeapons; // Weapon prefab/GameObjects assigned in scene, set at runtime by ClassManager
+    public GameObject starterWeapon;
+    public List<GameObject> classWeapons;
 
     [Header("Promotion")]
-    public ClassData promotionClass; // The stronger class this promotes into (null = no promotion available)
+    public ClassData promotionClass;
     public string promotionDescription;
 
     [Header("Unlock")]
     [Range(0f, 1f)]
-    [Tooltip("Chance that this class will be offered as a 2nd or 3rd class unlock. Used by ExperienceLevelController.")]
     public float secondClassUnlockChance = 0.15f;
 }
